@@ -1,10 +1,10 @@
-## Statistical_methods
+# Statistical_methods
 
-# Set-up
-- The files needed are located in the folder Data
+## Set-up
+- The files needed are located in the folder Data, make sure to get your working directories set up correctly.
 
-# DLNM
+## DLNM
 - In this script you will calculate the DLNM for each of your specific areas.
 
-# Pooled Effect
+## Pooled Effect
 - In this script you will calculate the pooled effect from all of your area.
