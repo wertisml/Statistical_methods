@@ -7,7 +7,7 @@ library(mixmeta) ; library(dlnm) ; library(scales)
 library(dplyr)
 
 # LOAD COEF/VCOV FROM FIRST-STAGE MODELS
-setwd("~/GRAM/Gasparini/On_My_Own/Files/Cities")
+setwd("~/DLNM/Data")
 tmeanpar <- read.csv(file="tmeanpar.csv")
 coef <- as.matrix(tmeanpar[,grep("coef", names(tmeanpar))])
 vcov <- as.matrix(tmeanpar[,grep("vcov", names(tmeanpar))])
