@@ -6,9 +6,8 @@ library(tsModel)
 library(splines) 
 library(lubridate)
 
-setwd("~/GRAM/Gasparini/On_My_Own/Files/Cities")
+setwd("~/DLNM")
 
-#Data <- fread("Sheps_Temp_Cities.csv") 
 Data <- fread("Sheps_Temp_Cities.csv")
 cities <- read.csv("NC_Cities.csv")
 cities <- cities %>%
@@ -143,7 +142,7 @@ avgtmeansum <- data.frame(perc=names(tmeansumlist[[1]]),
                           tmean=apply(do.call(cbind, tmeansumlist), 1, mean))
 
 # Write off the data sets
-setwd("~/GRAM/Gasparini/On_My_Own/Files/Cities")
+setwd("~/DLNM/Data")
 fwrite(tmeanpar, "tmeanpar.csv")
 #fwrite(RHpar, "RHpar.csv")
 fwrite(avgtmeansum, "avgtmeansum.csv")
