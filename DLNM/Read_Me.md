@@ -1,4 +1,4 @@
-# DLNM
+# Distributed Lag Non-Linear Models
 
 ## Set-up
 - The files needed are located in the folder Data, make sure to get your working directories set up correctly.
