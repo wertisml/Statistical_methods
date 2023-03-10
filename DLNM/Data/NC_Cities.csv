@@ -1,0 +1,7 @@
+city,state,statename,stfips,region,order,old,cityname,citynameU,pop
+char,NC,North Carolina,37,SE,3,1,Charlotte,Charlotte,3629956
+ash,NC,North Carolina,37,SE,1,1,Asheville,Asheville,779812
+ral,NC,North Carolina,37,SE,4,1,Raleigh,Raleigh,2958840
+hic,NC,North Carolina,37,SE,2,1,Hickory,Hickroy,412176
+grn,NC,North Carolina,37,SE,5,1,Greenville,Greenville,562892
+wil,NC,North Carolina,37,SE,6,1,Wilmington,Wilmington,679684
