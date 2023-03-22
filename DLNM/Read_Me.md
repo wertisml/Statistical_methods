@@ -56,7 +56,7 @@
 # Alternative Aproach for Small Areas
 
 ## Small_Area
-### Analysis using Distributed Lag Non-linear Models (DLNM) and Generalized Non-linear Models (GNM) to estimate the relationship between mental health outcomes and temperature in different regions.
+- Analysis using Distributed Lag Non-linear Models (DLNM) and Generalized Non-linear Models (GNM) to estimate the relationship between mental health outcomes and temperature in different regions.
 
 ## Packages Required
 - data.table
