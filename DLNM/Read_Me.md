@@ -3,7 +3,7 @@
 ## Set-up
 - The files needed are located in the folder Data, make sure to get your working directories set up correctly.
 
-## DLNM
+# DLNM
 - Analysis using Distributed Lag Non-linear Models (DLNM) and Generalized Non-linear Models (GNM) to estimate the relationship between mental health outcomes and temperature in different regions.
 
 ## Packages Required
@@ -35,7 +35,7 @@
     h. Create a prediction matrix (`pred`) using the `crosspred` function. The function takes the cross-basis matrix, the fitted model, the mean temperature, and the temperatures at which to predict the outcome variable as input arguments.
     i. Store the 14th, 15th, and 16th rows of the `pred`
 
-## Pooled Effect
+# Pooled Effect
 - In this script you will calculate the pooled effect from all of your area.
 
 ## Packages Required
