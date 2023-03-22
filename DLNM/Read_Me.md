@@ -4,9 +4,20 @@
 - The files needed are located in the folder Data, make sure to get your working directories set up correctly.
 
 ## DLNM
-### Analysis using Distributed Lag Non-linear Models (DLNM) and Generalized Non-linear Models (GNM) to estimate the relationship between mental health outcomes and temperature in different regions.
+- Analysis using Distributed Lag Non-linear Models (DLNM) and Generalized Non-linear Models (GNM) to estimate the relationship between mental health outcomes and temperature in different regions.
 
-1. Import necessary libraries for data manipulation, analysis, and modeling. These include: data.table, dplyr, dlnm, mixmeta, tsModel, splines, and lubridate.
+## Packages Required
+- data.table
+- mixmeta
+- dlnm
+- dplyr
+- scales
+- tsModel
+- splines
+- lubridate
+
+## Steps
+1. Import necessary libraries for data manipulation, analysis, and modeling.
 2. Set the working directory to "~/DLNM".
 3. Read in the "Sheps_Temp_Cities.csv" file using the `fread` function from the `data.table` package, and store it in the `Data` variable.
 4. Read in the "NC_Cities.csv" file and store it in the `cities` variable. Arrange the rows of `cities` based on the `order` column.
@@ -27,7 +38,14 @@
 ## Pooled Effect
 - In this script you will calculate the pooled effect from all of your area.
 
-1. Loads the necessary packages including mixmeta, dlnm, dplyr, and scales.
+## Packages Required
+- mixmeta
+- dlnm
+- dplyr
+- scales
+
+## Steps
+1. Loads the necessary packages.
 2. Sets the working directory to where the necessary files are located.
 3. Reads in the coefficient and vectorized covariance (coef/vcov) from first-stage models and links them with the census data.
 4. Runs the models and tests heterogeneity using mixmeta with no meta-predictor.
@@ -52,7 +70,7 @@
 - scales
 
 ## Steps
-1. Load required packages
+1. Load required packages.
 2. Read data from "Sheps_Temp_Regions.csv" file into a data table using the fread() function from data.table package.
 3. Perform data wrangling using dplyr package to add new variables, rename variables and select variables of interest.
 4. Define splines of day of the year using the onebasis() function from dlnm package.
