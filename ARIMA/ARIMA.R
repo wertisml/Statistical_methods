@@ -15,9 +15,9 @@ library(gridExtra)
 library(tidyr)
 library(data.table)
 
-setwd("~/GRAM/ARIMA/Texas")
+setwd()
 
-All_Calls <- read.csv("C:\\Users\\owner\\Documents\\GRAM\\ARIMA\\Texas\\All_Calls_Texas_Ice_Storm.csv")
+All_Calls <- read.csv(file.choose())
 
 #==============================================================================#
 #Set up
