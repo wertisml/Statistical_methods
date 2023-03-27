@@ -1,34 +1,218 @@
 rm(list = ls())
-library(forecast)
-library(ggplot2)
-library(gridExtra)
-library(xts)
-library(dplyr)
-library(lubridate)
-library(astsa)
-library(reshape2)
-library(padr)
-library(zoo)
-library(tfarima)
-library(lmtest)
-library(gridExtra)
-library(tidyr)
-library(data.table)
+library(tidyverse)  # for data manipulation and visualization
+library(forecast)   # for time series forecasting
+library(tseries)    # for time series analysis
+library(zoo)        # for time series data structures and methods
+library(TSA)        # for time series analysis
+library(lubridate)  # for working with date and time objects
+library(tfarima)    # for advanced ARIMA modeling
+library(lmtest)     # for running statistical tests
+library(gridExtra)  # for combining multiple plots into single figures
 
-setwd()
-
-All_Calls <- read.csv(file.choose())
+# Set working directory
+setwd("your_file_path")
 
 #==============================================================================#
-#Set up
+# Initilize Functions
 #==============================================================================#
 
-Data <- All_Calls %>%
-  filter(Date >= "2021-01-01") %>%
-  filter(Date <= "2021-12-10") %>%
-  mutate(Time = fifelse(Date > "2021-02-10", 1, 0))
+# Function to preprocess data
+#' Add time column to the data and filter based on start and end date
+#'
+#' @param file_path The path of the input CSV file
+#' @param date_col The name of the date column in the input file
+#' @param start_date The start date for filtering the data (optional)
+#' @param end_date The end date for filtering the data (optional)
+#' @param event_date The date of the intervention
+#' @return A data frame with an additional Time column and filtered data based on start and end date
 
-Data$Date <- as.Date(Data$Date)
+add_time_column <- function(file_path, date_col, start_date = NULL, end_date = NULL, event_date) {
+  Data <- read.csv(file_path, stringsAsFactors = FALSE)
+  
+  Data <- Data %>%
+    # Convert date column to Date format
+    mutate(!!sym(date_col) := as.Date(!!sym(date_col))) %>%
+    # Filter data based on start and end date
+    filter(!!sym(date_col) >= start_date) %>%
+    filter(!!sym(date_col) <= end_date) %>%
+    # Add Time column with 1 for dates after the intervention and 0 for dates before the intervention
+    mutate(Time = ifelse(!!sym(date_col) > as.Date(event_date), 1, 0))
+  
+  return(Data)
+}
+
+# Creating the time series
+create_ts <- function(Data, myvars, Year, extent) {
+  # Subset the input data using the provided myvars parameter
+  dat <- subset(Data)
+  dat <- dat[myvars]
+  # Create a sequence of dates starting from the first date in the input data, 
+  # up to the extent parameter, incremented by a day each time
+  inds <- seq(as.Date(Data$Date[1]), as.Date(Data$Date[extent]), by = "day")
+  # Create a time series object from the subset of the input data using the specified start year, 
+  # the day of the year of the first date in the sequence inds, and a frequency of 365 days per year
+  dat <- ts(dat, start = c(Year, as.numeric(format(inds[1], "%j"))), frequency = 365)
+  # Return the resulting time series object
+  return(dat)
+}
+
+
+# Test Ramp, Step, and Pulse for Auto.Arima 
+test_Auto.Arima <- function(Data, event_day, forecast, interventions = NULL) {
+  
+  # Step change (also called a level shift): A sudden, sustained change where 
+  #the time series is shifted either up or down by a given value immediately 
+  #following the intervention. The step change variable takes the value of 0 prior
+  #to the start of the intervention, and 1 afterwards.
+  step <- as.numeric(as.yearmon(time(dat))>=as.numeric(as.yearmon(Data$Date[event_day-1])))
+  # Ramp: A change in slope that occurs immediately after the intervention. 
+  #The ramp variable takes the value of 0 prior to the start of the intervention 
+  #and increases by 1 after the date of the intervention.
+  ramp <- append(rep(0, (event_day-1)), seq(1,forecast,1))
+  #Pulse: A sudden, temporary change that is observed for one or more time points 
+  #immediately after the intervention and then returns to baseline level. The pulse 
+  #variable takes the value of 1 on the date of the intervention, and 0 otherwise.
+  pulse <- InterventionVar(as.yearmon(time(dat)), (event_day - 1))
+  
+  xreg <- NULL
+  if ("step" %in% interventions) {
+    xreg <- cbind(xreg, step)
+  }
+  
+  if ("ramp" %in% interventions) {
+    xreg <- cbind(xreg, ramp)
+  }
+  
+  if ("pulse" %in% interventions) {
+    xreg <- cbind(xreg, pulse)
+  }
+  
+  model <- auto.arima(dat, seasonal = FALSE, xreg = xreg, stepwise = FALSE, trace = TRUE)
+  
+  return(list(model, xreg))
+}
+
+# Test Ramp, Step, and Pulse for Arima 
+test_Arima <- function(Data, event_day, forecast, interventions = NULL, p, d, q) {
+  
+  # Step change (also called a level shift): A sudden, sustained change where 
+  #the time series is shifted either up or down by a given value immediately 
+  #following the intervention. The step change variable takes the value of 0 prior
+  #to the start of the intervention, and 1 afterwards.
+  step <- as.numeric(as.yearmon(time(dat))>=as.numeric(as.yearmon(Data$Date[event_day-1])))
+  # Ramp: A change in slope that occurs immediately after the intervention. 
+  #The ramp variable takes the value of 0 prior to the start of the intervention 
+  #and increases by 1 after the date of the intervention.
+  ramp <- append(rep(0, (event_day-1)), seq(1,forecast,1))
+  #Pulse: A sudden, temporary change that is observed for one or more time points 
+  #immediately after the intervention and then returns to baseline level. The pulse 
+  #variable takes the value of 1 on the date of the intervention, and 0 otherwise.
+  pulse <- InterventionVar(as.yearmon(time(dat)), (event_day - 1))
+  
+  xreg <- NULL
+  if ("step" %in% interventions) {
+    xreg <- cbind(xreg, step)
+    colnames(xreg)[ncol(xreg)] <- "step"
+  }
+  
+  if ("ramp" %in% interventions) {
+    xreg <- cbind(xreg, ramp)
+    colnames(xreg)[ncol(xreg)] <- "ramp"
+  }
+  
+  if ("pulse" %in% interventions) {
+    xreg <- cbind(xreg, pulse)
+    colnames(xreg)[ncol(xreg)] <- "pulse"
+  }
+  
+  model <- Arima(dat, xreg = xreg, order = c(p, d, q))
+  
+  return(model)
+}
+
+my_forecast <- function(model, use_xreg = TRUE) {
+  
+  # Create regressor variable if use_xreg is true
+  if(use_xreg){
+    fc <- forecast(model, xreg = xreg, level = c(80, 90, 95)) 
+    fc.ts <- ts(as.numeric(fc$mean[event_day:extent]), start=c(ts_year, doy), frequency=365) #The length needs to be the length of the forecasted amount
+    dat.ts.2 <- ts.union(dat, fc.ts)
+  }
+  else{
+    fc <- forecast(model, h = forecast, level = c(80, 90, 95))
+    fc.ts <- ts(as.numeric(fc$mean), start=c(ts_year, doy), frequency=365)
+    dat.ts.2 <- ts.union(dat, fc.ts)
+  }
+  
+  # Create dataframe with forecasts
+  data <- data.frame(dat.ts.2) %>%
+    drop_na(dat) %>%
+    mutate(Date = seq(extent)) 
+  
+  # Create empty dataframe for upper and lower bounds
+  fore <- data.frame(matrix(ncol = 2, nrow = forecast)) #nrow is the days ahead
+  
+  # Provide column names for upper and lower bounds
+  colnames(fore) <- c('upper', 'lower')
+  
+  # Extract upper bounds and add to dataframe
+  upper <- as.matrix(fc[["upper"]])
+  upper <- data.frame(upper[1:forecast,])
+  fore$upper90 <- upper$X90.
+  fore$upper95 <- upper$X95.
+  
+  # Extract lower bounds and add to dataframe
+  lower <- as.matrix(fc[["lower"]])
+  lower <- data.frame(lower[1:forecast,])
+  fore$lower90 <- lower$X90.
+  fore$lower95 <- lower$X95.
+  
+  # Add date information to the forecast dataframe
+  fore$Date <- seq(1,forecast)+event_day #change numbers, 1, value of h, + days used as pre event data 
+  
+  # Merge the data and forecast dataframes by date
+  data<-merge(data,fore, by="Date", all.x=T)
+  
+  # Return a list containing the data and forecast dataframes
+  return(list(data = data, fore = fore))
+}
+
+# Creates the plot function
+plot_forecast <- function(data, fc.ts, fore, ylab_text) {
+  ggplot(data = data, aes(x=as.Date(Date + (as.numeric(Data[1,1])-1)))) + 
+    # Create a line plot for the original data with the x-axis being dates and y-axis being "dat"
+    geom_line(aes(y=dat), color="darkred", size = 0.5) +
+    # Create a line plot for the forecasted data with the x-axis being dates and y-axis being "fc.ts"
+    geom_line(aes(y=fc.ts), color="orangered", linetype="twodash", size = 1.) +
+    # Create a ribbon plot for the upper and lower bounds of the forecasted data
+    geom_ribbon(data=fore, aes(ymin=(lower95), ymax=(upper95)),alpha=0.5, fill="steelblue")+
+    # Use a white background theme
+    theme_bw() + 
+    # Remove legend
+    theme(legend.position="none") +
+    # Label x-axis as "Date"
+    xlab("Date") + 
+    # Label y-axis  
+    ylab(ylab_text) + # use input ylab_text here
+    # Rotate y-axis label by 0 degrees and adjust vertical justification to 1
+    theme(axis.title.y=element_text(angle=0, vjust=1))+
+    #ggtitle("                                         Crisis text volume for stress and anxiety over time") +
+    # Set linetypes for the line plots
+    scale_linetype_manual(values=c("twodash", "dotted"))+
+    # Set color range for the line plots
+    scale_color_grey(start=0.8, end=0.2)
+}
+
+#==============================================================================#
+# Run the functions to create perform the analysis
+#==============================================================================#
+
+# Call the function with file_path = "example.csv", date_col = "date", and event_date = "2022-03-01"
+Data <- add_time_column(file_path = "All_Calls_Texas_Ice_Storm.csv", 
+                        date_col = "Date", 
+                        start_date = "2021-01-01",
+                        end_date = "2021-12-10",
+                        event_date = "2021-02-10")
 
 # Time variables
 Year <- year(Data$Date[1]) #This represents the year that the data starts at
@@ -41,153 +225,46 @@ ts_year <- year(Data$Date[event_day]) #The year that the event occured in
 last_day = time[length(time)]
 end_day <- as.numeric(strftime(Data$Date[last_day], format = "%j"))
 last_year <- year(Data$Date[last_day])
-#==============================================================================#
-# Creating the time series
-#==============================================================================#
 
-dat <- subset(Data) 
-myvars <- c("sumCTL")
-#myvars <- c("suicide") 
-#myvars <- c("stress_anxiety")
-#myvars <- c("depressed")#can change if we want to look at different variables
-dat <- dat[myvars]
+# Creating the time series, specify which outcome you want to examine within the c("")
+dat <- create_ts(Data, c("sumCTL"), Year, extent)
 
-## Create a daily Date object - from the start to the end of the data set
-inds <- seq(as.Date(Data$Date[1]), as.Date(Data$Date[extent]), by = "day")
-# Uses the date object to create a time series based off the dataframe
-dat <- ts(dat,
-          start = c(Year, as.numeric(format(inds[1], "%j"))),
-          frequency = 365)
+# You will want to test multiple aproaches to determine the best result between auto.arima and Arima
+# Test Ramp, Step, and Pulse for Auto.Arima, 
+# If you don't need an intervention, remove the intervention call
+result <- test_Auto.Arima(Data = Data, 
+                          event_day, forecast, 
+                          interventions = c("step"))
+model1 <- result[[1]]
+coeftest(model1)
+xreg <- result[[2]]
 
-#==============================================================================#
-# Test Ramp, Step, and Pulse
-#==============================================================================#
+# Test Ramp, Step, and Pulse for Arima 
+# If you don't need an intervention, remove the intervention call
+model2 <- test_Arima(Data = Data, 
+                     event_day, forecast, 
+                     interventions = c("step"), 
+                     p = 1, d = 1, q = 1)
+coeftest(model2)
+xreg <- model2$xreg
 
-# Step change (also called a level shift): A sudden, sustained change where 
-#the time series is shifted either up or down by a given value immediately 
-#following the intervention. The step change variable takes the value of 0 prior
-#to the start of the intervention, and 1 afterwards.
-step <- as.numeric(as.yearmon(time(dat))>=as.numeric(as.yearmon(Data$Date[event_day-1]))) #
-#step
-
-# Ramp: A change in slope that occurs immediately after the intervention. 
-#The ramp variable takes the value of 0 prior to the start of the intervention 
-#and increases by 1 after the date of the intervention.
-ramp <- append(rep(0, (event_day-1)), seq(1,forecast,1)) #first is 0s for the number of days pre event and second is number of increasing days post event
-#ramp  
-
-#Pulse: A sudden, temporary change that is observed for one or more time points 
-#immediately after the intervention and then returns to baseline level. The pulse 
-#variable takes the value of 1 on the date of the intervention, and 0 otherwise.
-pulse <- InterventionVar(as.yearmon(time(dat)), (event_day - 1))
-#pulse
-
-#==============================================================================#
-# Test ARIMA models
-#==============================================================================#
-
-# Use automated algorithm to identify p/q parameters
-# Specify first difference = 1 and seasonal difference = 1
-
-#model1 <- auto.arima(dat, seasonal=F, xreg=cbind(ramp), stepwise=F, trace=T)
-#model1 <- auto.arima(dat, seasonal=F, xreg=cbind(step), stepwise=F, trace=T)
-#model1 <- auto.arima(dat, seasonal=F, xreg=cbind(pulse), stepwise=F, trace=T)
-#model1 <- auto.arima(dat, seasonal=F, xreg=cbind(step, pulse), stepwise=F, trace=T)
-#model1 <- auto.arima(dat, seasonal=F, xreg=cbind(ramp, pulse), stepwise=F, trace=T)
-#model1 <- auto.arima(dat, seasonal=F, xreg=cbind(step, ramp), stepwise=F, trace=T)
-#model1 <- auto.arima(dat, seasonal=F, xreg=cbind(ramp, step, pulse), stepwise=F, trace=T)
-#model1 <- auto.arima(dat, seasonal=F, stepwise=F, trace=T)
-#coeftest(model1)
-
-#code <- model1[["arma"]]
-
-#p <- code[1]
-#q <- code[2]
-#d <- code[6]
-
-model2 <- Arima(window(dat, end=c(last_year, (1+ end_day))), xreg = step, order=c(3,0,0))
-
-#model2 <- Arima(window(dat, end=c(Year, extent)), xreg = step, order=c(3,0,0))
-
-#coeftest(model2)
-#sqrt(diag(vcov(model2)))
-
-#==============================================================================#
-#Building for plot
-#==============================================================================#
-
-# When not using xreg
-
-fc <- forecast(model2, h = forecast, level = c(80, 90, 95))
-fc.ts <- ts(as.numeric(fc$mean), start=c(ts_year, doy), frequency=365)
-dat.ts.2 <- ts.union(dat, fc.ts)
-
-# When using xreg
-
-fc <- forecast(model2, xreg = step, level = c(80, 90, 95)) 
-fc.ts <- ts(as.numeric(fc$mean[event_day:extent]), start=c(ts_year, doy), frequency=365) #The length needs to be the length of the forecasted amount
-dat.ts.2 <- ts.union(dat, fc.ts)
-
-
-data <- data.frame(dat.ts.2) %>%
-  drop_na(dat) %>%
-  mutate(Date = seq(extent)) ####This needs to be changed as the dates being looked at change, this is the total extent of dataframe being used
-
-fore <- data.frame(matrix(ncol = 2, nrow = forecast)) #nrow is the days ahead
-
-# Provide column names
-colnames(fore) <- c('upper', 'lower')
-upper <- as.matrix(fc[["upper"]])
-upper <- data.frame(upper[1:forecast,])
-fore$upper90 <- upper$X90.
-fore$upper95 <- upper$X95.
-lower <- as.matrix(fc[["lower"]])
-lower <- data.frame(lower[1:forecast,])
-fore$lower90 <- lower$X90.
-fore$lower95 <- lower$X95.
-
-fore$Date <- seq(1,forecast)+event_day #change numbers, 1, value of h, + days used as pre event data 
-
-data<-merge(data,fore, by="Date", all.x=T)
+# you will want to change the model being used based on best AIC performance
+# If you do not use an intervention term then use_xreg needs to be FALSE
+result <- my_forecast(model = model1, use_xreg = TRUE)
+data <- result$data
+fore <- result$fore
 
 #==============================================================================#
 #Plot the ARIMA model + forecast
 #==============================================================================#
 
-stress_anxiety <- ggplot(data = data, aes(x=as.Date(Date + (as.numeric(Data[1,1])-1)))) + 
-  geom_line(aes(y=dat), color="darkred", size = 0.5) +
-  geom_line(aes(y=fc.ts), color="orangered", linetype="twodash", size = 1.) + 
-  geom_ribbon(data=fore, aes(ymin=(lower95), ymax=(upper95)),alpha=0.5, fill="steelblue")+
-  theme_bw() + 
-  theme(legend.position="none") +
-  xlab("Date") + 
-  ylab("c)")+
-  theme(axis.title.y=element_text(angle=0, vjust=1))+
-  #ggtitle("                                         Crisis text volume for stress and anxiety over time") +
-  scale_linetype_manual(values=c("twodash", "dotted"))+
-  scale_color_grey(start=0.8, end=0.2)
+Plot <- plot_forecast(data, fc.ts, fore, ylab_text = "b)")
+Plot
 
 #==============================================================================#
 # Create grid for the ARIMA model + forecast
 #==============================================================================#
 
-png(file = 'gridExtra.png', width = 10, height = 6, units = 'in', res = 600)
-grid.arrange(sumCTL, suicide, stress_anxiety, depressed, ncol = 2, padding = 20)
+png(file = 'Ida_Control.png', width = 10, height = 6, units = 'in', res = 600)
+grid.arrange(sumCTL, substance, suicide, stress_anxiety, bereavement, ncol = 2, padding = 20)
 dev.off()
-
-#==============================================================================#
-#
-#==============================================================================#
-
-#total value of forecasted
-sum(data$fc.ts, na.rm = TRUE)
-#Total value of actual
-sum(data$dat, na.rm = TRUE)
-#total upper confidence
-sum(data$upper95, na.rm = TRUE)
-sum(data$upper90, na.rm = TRUE)
-#Total lower confidence 
-sum(data$lower95, na.rm = TRUE)
-sum(data$lower90, na.rm = TRUE)
-
-
