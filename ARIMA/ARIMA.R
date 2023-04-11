@@ -1,4 +1,3 @@
-rm(list = ls())
 library(tidyverse)  # for data manipulation and visualization
 library(forecast)   # for time series forecasting
 library(tseries)    # for time series analysis
@@ -10,7 +9,7 @@ library(lmtest)     # for running statistical tests
 library(gridExtra)  # for combining multiple plots into single figures
 
 # Set working directory
-setwd("your_file_path")
+setwd("~/GRAM/ARIMA/Texas")
 
 #==============================================================================#
 # Initilize Functions
@@ -29,14 +28,20 @@ setwd("your_file_path")
 add_time_column <- function(file_path, date_col, start_date = NULL, end_date = NULL, event_date) {
   Data <- read.csv(file_path, stringsAsFactors = FALSE)
   
+  # Set the original date as a character string
+  original_date <- Data[[date_col]]
+  
+  # Convert the original date to a date object
+  date_object <- as.IDate(original_date)
+  
   Data <- Data %>%
-    # Convert date column to Date format
-    mutate(!!sym(date_col) := as.Date(!!sym(date_col))) %>%
+    # Convert date column to desired format
+    mutate(date_col = format(date_object, "%Y-%m-%d")) %>%
     # Filter data based on start and end date
-    filter(!!sym(date_col) >= start_date) %>%
-    filter(!!sym(date_col) <= end_date) %>%
+    filter(date_col >= start_date) %>%
+    filter(date_col <= end_date) %>%
     # Add Time column with 1 for dates after the intervention and 0 for dates before the intervention
-    mutate(Time = ifelse(!!sym(date_col) > as.Date(event_date), 1, 0))
+    mutate(Time = ifelse(date_col > as.Date(event_date), 1, 0))
   
   return(Data)
 }
@@ -208,6 +213,7 @@ plot_forecast <- function(data, fc.ts, fore, ylab_text) {
 #==============================================================================#
 
 # Call the function with file_path = "example.csv", date_col = "date", and event_date = "2022-03-01"
+# Regardless of the formatting of you date column you need to specify the event times in YYYY-MM-DD format
 Data <- add_time_column(file_path = "All_Calls_Texas_Ice_Storm.csv", 
                         date_col = "Date", 
                         start_date = "2021-01-01",
@@ -268,3 +274,4 @@ Plot
 png(file = 'Ida_Control.png', width = 10, height = 6, units = 'in', res = 600)
 grid.arrange(sumCTL, substance, suicide, stress_anxiety, bereavement, ncol = 2, padding = 20)
 dev.off()
+
