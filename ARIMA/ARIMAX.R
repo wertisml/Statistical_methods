@@ -1,9 +1,8 @@
 rm(list = ls())
 library(forecast)
-library(ggplot2)
+library(tidyverse)
 library(gridExtra)
 library(xts)
-library(dplyr)
 library(lubridate)
 library(astsa)
 library(reshape2)
@@ -13,7 +12,7 @@ library(TSA)
 library(data.table)
 library(urca)
 library(fpp2)
-library(tidyr)
+
 
 setwd("~/GRAM/ARIMA/Texas")
 

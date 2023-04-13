@@ -26,7 +26,7 @@ setwd("~/GRAM/ARIMA/Texas")
 #' @return A data frame with an additional Time column and filtered data based on start and end date
 
 add_time_column <- function(file_path, date_col, start_date = NULL, end_date = NULL, event_date) {
-  Data <- read.csv(file_path, stringsAsFactors = FALSE)
+  Data <- read_csv(file_path)
   
   # Set the original date as a character string
   original_date <- Data[[date_col]]
