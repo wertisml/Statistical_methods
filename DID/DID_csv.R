@@ -15,16 +15,16 @@ setwd("~/Statistical_methods/DID/Data")
 # by adding a new "Time" column, which indicates whether the date is before or after the event date.
 # The function then groups the data by date and area code and calculates the sum of the outcome column,
 # the log of the outcome column plus one, and the number of observations. The function returns a
-# data frame with the following columns: "Date", "areacode", "Outcome", "Time", and "log_Outcome".
+# data frame with the following columns: "Date", "identifier", "Outcome", "Time", and "log_Outcome".
 
 # Returns:
 # - Date: the date in YYYY-MM-DD format
-# - areacode: the area code as a character string
+# - identifier: the area code as a character string
 # - Outcome: the sum of the outcome column for the date and area code
 # - Time: a binary variable indicating if the date is before or after the event date
 # - log_Outcome: the natural logarithm of the sum of the outcome column plus one
 
-add_time_column <- function(file_path, date_col, start_date = NULL, end_date = NULL, event_date, outcome_column = NULL, area_code_col = NULL) {
+add_time_column <- function(file_path, date_col, start_date = NULL, end_date = NULL, event_date, outcome_column = NULL, location_identifier_col = NULL) {
   Data <- read_csv(file_path)
   
   # Set the original date as a character string
@@ -40,12 +40,12 @@ add_time_column <- function(file_path, date_col, start_date = NULL, end_date = N
     filter(date_col >= start_date) %>%
     filter(date_col <= end_date) %>%
     rename(Outcome = all_of(outcome_column),
-           areacode = all_of(area_code_col)) %>%
-    mutate(areacode = as.character(areacode)) %>%
+           identifier = all_of(location_identifier_col)) %>%
+    mutate(identifier = as.character(identifier)) %>%
     group_by_if(is.numeric %>% Negate) %>%
     summarize_all(sum) %>%
     mutate(log_Outcome = log(Outcome+1)) %>%
-    select(Date, areacode, Outcome, log_Outcome) %>%
+    select(identifier, Outcome, log_Outcome) %>%
     as.data.frame()
   
   return(Data)
@@ -56,17 +56,17 @@ add_time_column <- function(file_path, date_col, start_date = NULL, end_date = N
 #and returns the mutated dataset.
 
 # Returns:
-# - areacode: the numeric value of the areacode column
+# - identifier: the numeric value of the identifier column
 # - exposed: a binary variable indicating if the area code was impacted by the event
 # - numbered_daily: the numeric value of the Date column (which is assumed to be in YYYY-MM-DD format)
 # - treat: the date of the event (as a numeric value) for impacted areas, 0 for unaffected areas.
 
-impacted_locations <- function(data_set, impacted_areacodes, unimpcted_areacodes, event_date){
+impacted_locations <- function(data_set, impacted_identifiers, unimpcted_identifiers, event_date){
   
   data_set <- data_set %>%
-    mutate(areacode = as.numeric(areacode),
-           exposed = ifelse(areacode %in% impacted_areacodes, 1,
-                            ifelse(areacode %in% unimpcted_areacodes, 0, "")),
+    mutate(identifier = as.numeric(identifier),
+           exposed = ifelse(identifier %in% impacted_identifiers, 1,
+                            ifelse(identifier %in% unimpcted_identifiers, 0, "")),
            numbered_daily = as.numeric(as.Date(Date)),
            treat = ifelse(exposed == 1, as.numeric(as.Date(event_date)), 0)) 
   
@@ -79,14 +79,17 @@ impacted_locations <- function(data_set, impacted_areacodes, unimpcted_areacodes
 # these changes when adding/removing closing parentheses.
 # There always needs to be two pre event periods in the function.
 
-Create_temporal_periods <- function(data_frame, event_date) { 
+Create_temporal_periods <- function(data_frame, event_date, start_date, elapsed_time) { 
+  
+  start <- as.numeric(as.Date(start_date))
+  event <- as.numeric(as.Date(event_date))
   
   Data <- Data %>%
-    mutate(Date_elapsed = fifelse(numbered_daily %between% c(18629, as.numeric(as.Date(event_date))-1), 18700, #pre-storm
-                                  fifelse(numbered_daily %between% c(as.numeric(as.Date(event_date)), as.numeric(as.Date(event_date))+28), 18868, #4-weeks
-                                          fifelse(numbered_daily %between% c(as.numeric(as.Date(event_date)), as.numeric(as.Date(event_date)) + 92), 18897, #3 months
-                                                  fifelse(numbered_daily %between% c(as.numeric(as.Date(event_date)), as.numeric(as.Date(event_date)) + 123), 18961, #4 months
-                                                          0)))))#very first day of data
+    mutate(Date_elapsed = fifelse(numbered_daily %between% c((start+1), event - 1), (event - 1), #pre-storm
+                            fifelse(numbered_daily %between% c(event, event + elapsed_time[1]), event, #4-weeks
+                              fifelse(numbered_daily %between% c(event, event + elapsed_time[2]), (event + elapsed_time[1]+1), #3 months
+                                fifelse(numbered_daily %between% c(event, event + elapsed_time[3]), (event + elapsed_time[2] + 1), #4 months
+                                  0)))))#very first day of data
 }
 
 #==============================================================================#
@@ -100,16 +103,18 @@ Data <- add_time_column(file_path = "Example.csv", # a character string represen
                         end_date = "2021-12-29", # a character string representing the end date in YYYY-MM-DD format 
                         event_date = "2021-08-29", # a character string representing the event date in YYYY-MM-DD format
                         outcome_column = "outcome1", # a character string representing the name of the outcome column in the CSV file
-                        area_code_col = "areacode") # a character string representing the name of the area code column in the CSV file
+                        location_identifier_col = "areacode") # a character string representing the name of the area code column in the CSV file
 
 # Specify the impacted regions in the study and state the date of the event
 Data <- impacted_locations(data_set = Data,
-                           impacted_areacodes = c(1, 2, 3, 4), # a vector of numeric area codes that were impacted by an event
-                           unimpcted_areacodes = c(5), # a vector of numeric area codes that were unaffected by an event
+                           impacted_identifiers = c(1, 2, 3, 4), # a vector of numeric area codes that were impacted by an event
+                           unimpcted_identifiers = c(5), # a vector of numeric area codes that were unaffected by an event
                            event_date = "2021-08-29") # a character string representing the date of the event in YYYY-MM-DD format
 
 Data <- Create_temporal_periods(data_frame = Data,
-                                 event_date = "2021-08-29") # # a character string representing the date of the event in YYYY-MM-DD format
+                                start_date = "2021-01-01", # a character string representing the start date in YYYY-MM-DD format
+                                event_date = "2021-08-29", # a character string representing the date of the event in YYYY-MM-DD format
+                                elapsed_time = c(28, 92, 123)) # a vector of numeric days that elapse between observations
 
 #==============================================================================#
 # Generate results using the below
@@ -117,7 +122,7 @@ Data <- Create_temporal_periods(data_frame = Data,
 
 MP <- att_gt(yname= "log_Outcome", #outcome results
              tname = "Date_elapsed", #Time period I am interested in
-             idname = "areacode", #Unique identifier 
+             idname = "identifier", #Unique identifier 
              gname = "treat", #when the event occurred
              data = Data,
              panel = FALSE)
@@ -125,7 +130,7 @@ MP <- att_gt(yname= "log_Outcome", #outcome results
 set.seed(24)
 atts <- att_gt(yname = "log_Outcome", # LHS variable
                tname = "Date_elapsed", # time variable
-               idname = "areacode", # id variable
+               idname = "identifier", # id variable
                gname = "treat", # first treatment period variable
                data = Data, # data
                xformla = NULL, # no covariates
@@ -135,11 +140,11 @@ atts <- att_gt(yname = "log_Outcome", # LHS variable
                bstrap = TRUE, # if TRUE compute bootstrapped SE
                biters = 1000, # number of bootstrap iterations
                print_details = FALSE, # if TRUE, print detailed results
-               clustervars = "areacode", # cluster level
+               clustervars = "identifier", # cluster level
                panel = FALSE) # whether the data is panel or repeated cross-sectional
 
 simple <- aggte(MP, type = "simple")
 
-dynamic <- aggte(atts, type = "dynamic", bstrap = TRUE, clustervars = "areacode")
+dynamic <- aggte(atts, type = "dynamic", bstrap = TRUE, clustervars = "identifier")
 ggdid(dynamic)
 
