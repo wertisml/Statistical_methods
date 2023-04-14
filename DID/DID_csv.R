@@ -24,7 +24,7 @@ setwd("~/Statistical_methods/DID/Data")
 # - Time: a binary variable indicating if the date is before or after the event date
 # - log_Outcome: the natural logarithm of the sum of the outcome column plus one
 
-add_time_column <- function(file_path, date_col, start_date = NULL, end_date = NULL, event_date, outcome_column = NULL, location_identifier_col = NULL) {
+add_time_column <- function(file_path, date_col, start_date = NULL, end_date = NULL, event_date, outcome_column = NULL, location_identifier_col = NULL, study_area) {
   Data <- read_csv(file_path)
   
   # Set the original date as a character string
@@ -41,6 +41,7 @@ add_time_column <- function(file_path, date_col, start_date = NULL, end_date = N
     filter(date_col <= end_date) %>%
     rename(Outcome = all_of(outcome_column),
            identifier = all_of(location_identifier_col)) %>%
+    filter(identifier %in% study_area) %>%
     mutate(identifier = as.character(identifier)) %>%
     group_by_if(is.numeric %>% Negate) %>%
     summarize_all(sum) %>%
@@ -103,7 +104,8 @@ Data <- add_time_column(file_path = "Example.csv", # a character string represen
                         end_date = "2021-12-29", # a character string representing the end date in YYYY-MM-DD format 
                         event_date = "2021-08-29", # a character string representing the event date in YYYY-MM-DD format
                         outcome_column = "outcome1", # a character string representing the name of the outcome column in the CSV file
-                        location_identifier_col = "areacode") # a character string representing the name of the area code column in the CSV file
+                        location_identifier_col = "areacode",
+                        study_area = c(1,2,3,4,5)) # a character string representing the name of the area code column in the CSV file
 
 # Specify the impacted regions in the study and state the date of the event
 Data <- impacted_locations(data_set = Data,
@@ -111,6 +113,7 @@ Data <- impacted_locations(data_set = Data,
                            unimpcted_identifiers = c(5), # a vector of numeric area codes that were unaffected by an event
                            event_date = "2021-08-29") # a character string representing the date of the event in YYYY-MM-DD format
 
+# Specify the temporal periods that you are interested in, currently there is only an option for 3 periods post treatment but more can be manually added.
 Data <- Create_temporal_periods(data_frame = Data,
                                 start_date = "2021-01-01", # a character string representing the start date in YYYY-MM-DD format
                                 event_date = "2021-08-29", # a character string representing the date of the event in YYYY-MM-DD format

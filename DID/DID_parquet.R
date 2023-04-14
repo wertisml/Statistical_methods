@@ -25,13 +25,14 @@ setwd("~/Statistical_methods/DID/Data")
 # - Time: a binary variable indicating if the date is before or after the event date
 # - log_Outcome: the natural logarithm of the sum of the outcome column plus one
 
-add_time_column <- function(file_path, date_col, start_date = NULL, end_date = NULL, event_date, outcome_column = NULL, location_identifier_col = NULL) {
+add_time_column <- function(file_path, date_col, start_date = NULL, end_date = NULL, event_date, outcome_column = NULL, location_identifier_col = NULL, study_area) {
 
   Data <- open_dataset(file_path) %>%
     rename(Outcome = all_of(outcome_column),
            identifier = all_of(location_identifier_col),
            Date = date_col) %>%
     collect() %>%
+    filter(identifier %in% study_area) %>%
     mutate(Date = as.IDate(Date)) %>%
     filter(Date >= start_date,
            Date <= end_date) %>%
@@ -98,7 +99,8 @@ Data <- add_time_column(file_path = "Example.parquet", # a character string repr
                         end_date = "2021-12-29", # a character string representing the end date in YYYY-MM-DD format 
                         event_date = "2021-08-29", # a character string representing the event date in YYYY-MM-DD format
                         outcome_column = "outcome1", # a character string representing the name of the outcome column in the CSV file
-                        location_identifier_col = "areacode") # a character string representing the name of the area code column in the CSV file
+                        location_identifier_col = "areacode",
+                        study_area = c(1, 2, 3, 4, 5)) # a character string representing the name of the area code column in the CSV file
 
 # Specify the impacted regions in the study and state the date of the event
 Data <- impacted_locations(data_set = Data,
