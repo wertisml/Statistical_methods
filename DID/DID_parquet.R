@@ -31,6 +31,7 @@ add_time_column <- function(file_path, date_col, start_date = NULL, end_date = N
     rename(Outcome = all_of(outcome_column),
            identifier = all_of(location_identifier_col),
            Date = date_col) %>%
+    select(Date, identifier, Outcome) %>%
     collect() %>%
     filter(identifier %in% study_area) %>%
     mutate(Date = as.IDate(Date)) %>%
@@ -38,10 +39,10 @@ add_time_column <- function(file_path, date_col, start_date = NULL, end_date = N
            Date <= end_date) %>%
     mutate(Date = as.IDate(format(Date, "%Y-%m-%d")),
            identifier = as.character(identifier)) %>%
-    group_by_if(is.numeric %>% Negate) %>%
-    summarize_all(sum) %>%
+    group_by(Date, identifier) %>%
+    summarize(Outcome = sum(Outcome)) %>%
     mutate(log_Outcome = log(Outcome+1)) %>%
-    select(Date, identifier, Outcome, log_Outcome) %>%
+    select(date_col, identifier, Outcome, log_Outcome) %>%
     as.data.frame()
   
   return(Data)

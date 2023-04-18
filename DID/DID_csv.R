@@ -42,9 +42,8 @@ add_time_column <- function(file_path, date_col, start_date = NULL, end_date = N
     rename(Outcome = all_of(outcome_column),
            identifier = all_of(location_identifier_col)) %>%
     filter(identifier %in% study_area) %>%
-    mutate(identifier = as.character(identifier)) %>%
-    group_by_if(is.numeric %>% Negate) %>%
-    summarize_all(sum) %>%
+    group_by(date_col, identifier) %>%
+    summarize(Outcome = sum(Outcome)) %>%
     mutate(log_Outcome = log(Outcome+1)) %>%
     select(identifier, Outcome, log_Outcome) %>%
     as.data.frame()
@@ -68,7 +67,7 @@ impacted_locations <- function(data_set, impacted_identifiers, unimpcted_identif
     mutate(identifier = as.numeric(identifier),
            exposed = ifelse(identifier %in% impacted_identifiers, 1,
                             ifelse(identifier %in% unimpcted_identifiers, 0, "")),
-           numbered_daily = as.numeric(as.Date(Date)),
+           numbered_daily = as.numeric(as.Date(date_col)),
            treat = ifelse(exposed == 1, as.numeric(as.Date(event_date)), 0)) 
   
   return(data_set)
