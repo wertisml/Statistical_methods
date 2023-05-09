@@ -7,11 +7,13 @@ library(DALEX)
 library(iBreakDown)
 library(doParallel)
 
+setwd("~/Statistical_methods/SHAP/Data")
+
 #==============================================================================#
 # Input data
 #==============================================================================#
 
-Data <- fread("C:\\Users\\owner\\Documents\\Statistical_methods\\SHAP\\Data\\Example_SHAP_Data.csv")
+Data <- fread("Example_SHAP_Data.csv")
 
 #==============================================================================#
 # Clean Data
@@ -38,12 +40,7 @@ Test <- testing(split)
 # SHAP
 #==============================================================================#
 
-# File must be .rds
-
-# Read in rds file
-Model <- readRDS("C:\\Users\\owner\\Documents\\Statistical_methods\\SHAP\\Data\\XGBoost_shap_Test.rds")
-
-SHAP_Calculation <- function(variable_names, Model_type, SHAP_sample_size, Interval_col){
+SHAP_Calculation <- function(variable_names, Outcome, Model_type, SHAP_sample_size, Interval_col){
   
   # Set-up parallel
   n.cores <- parallel::detectCores() - 1
@@ -69,7 +66,7 @@ SHAP_Calculation <- function(variable_names, Model_type, SHAP_sample_size, Inter
   
   explain_Model <- DALEX::explain(Model,
                                   data = Train[, Select_predictor],
-                                  y = Train$Mental_Health,
+                                  y = Train[, Outcome],
                                   label = Model_type)
   
   Hoge <- c()
@@ -111,11 +108,16 @@ SHAP_Calculation <- function(variable_names, Model_type, SHAP_sample_size, Inter
   return(SHAP)
 }
 
+# File must be .rds
+# Read in rds file
+Model <- readRDS("GAM_rfe.rds")
+
 system.time(
-Shap <- SHAP_Calculation(variable_names = c(Model$coefnames), # list of variables used to create your model
-                         Model_type = "RF", # What type of ML model is Model?
+Shap <- SHAP_Calculation(variable_names = c(names(Train)), # list of variables used to create your model
+                         Outcome = "Outcome", # Name of the outcome variable we are looking at
+                         Model_type = "XGB", # What type of ML model is Model?
                          Interval_col = "Date", # The column with the information on the frequency of data (ex: Date)
-                         SHAP_sample_size = 293) # This is the number of points from Train that you want the SHAP value calculated for, the larger the number, the slower the calculation
+                         SHAP_sample_size = 100) # This is the number of points from Train that you want the SHAP value calculated for, the larger the number, the slower the calculation
 )                   
         
 #==============================================================================#
@@ -127,7 +129,7 @@ Plot_data <- Shap[ , , ]
 myfuns <- list(Low = min, High = max)
 ls_val <- unlist(lapply(myfuns, function(f) f(Plot_data$Contribution)))
 
-ggplot(data = Plot_data) +
+SHAP_Plot <- ggplot(data = Plot_data) +
   coord_flip() +
   ggforce::geom_sina(aes(x = fct_reorder(variable_name, mean_value), y = Contribution, color = Variable_value_scale),
                      method = "counts", alpha = 3) + 
@@ -150,3 +152,23 @@ ggplot(data = Plot_data) +
         legend.text=element_text(size=8),
         axis.title.x= element_text(size = 10)) +
   labs(y = "SHAP value (impact on model output)", x = "", color = "Feature value")                 
+
+SHAP_Plot
+
+#==============================================================================#
+# Take a photo of the plot
+#==============================================================================#
+
+# Set the resolution to 600 dpi
+res <- 600
+
+# Get the current plot dimensions
+w <- par("fin")[1] * res
+h <- par("fin")[2] * res
+
+# Create a new device with the desired resolution
+png(filename = paste0("All_Cities_XGBoost", ".png"), width = w, height = h, res = res)
+
+SHAP_Plot
+
+dev.off()
