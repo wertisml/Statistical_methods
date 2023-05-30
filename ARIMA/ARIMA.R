@@ -271,7 +271,7 @@ Plot
 # Create grid for the ARIMA model + forecast
 #==============================================================================#
 
-png(file = 'Ida_Control.png', width = 10, height = 6, units = 'in', res = 600)
+pdf(file = paste0("ARIMA_Plots", ".pdf"), width = 6, height = 6)
 grid.arrange(sumCTL, substance, suicide, stress_anxiety, bereavement, ncol = 2, padding = 20)
 dev.off()
 

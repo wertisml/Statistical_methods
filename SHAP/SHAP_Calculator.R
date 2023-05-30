@@ -159,15 +159,7 @@ SHAP_Plot
 # Take a photo of the plot
 #==============================================================================#
 
-# Set the resolution to 600 dpi
-res <- 600
-
-# Get the current plot dimensions
-w <- par("fin")[1] * res
-h <- par("fin")[2] * res
-
-# Create a new device with the desired resolution
-png(filename = paste0("All_Cities_XGBoost", ".png"), width = w, height = h, res = res)
+pdf(file = paste0("SHAP_Plot", ".pdf"), width = 6, height = 6)
 
 SHAP_Plot
 
